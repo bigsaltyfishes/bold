@@ -2,11 +2,11 @@
   description = "Bold linker";
 
   inputs = {
-    nixpkgs.url = "github:nixos/nixpkgs/nixos-24.11";
+    nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
     flake-utils.url = "github:numtide/flake-utils";
     zig.url = "github:mitchellh/zig-overlay";
     zls.url = "github:zigtools/zls";
-    zacho.url = "github:kubkon/zacho";
+    zacho.url = "git+https://codeberg.org/kubkon/zacho";
 
     # Used for shell.nix
     flake-compat = {
