@@ -45,7 +45,7 @@ pub fn build(b: *std.Build) void {
     exe.root_module.addImport("yaml", yaml.module("yaml"));
     exe.root_module.addImport("dis_x86_64", dis_x86_64.module("dis_x86_64"));
     exe.root_module.strip = strip;
-    exe.linkLibC();
+    exe.root_module.link_libc = true;
 
     const exe_opts = b.addOptions();
     exe.root_module.addOptions("build_options", exe_opts);
@@ -65,17 +65,22 @@ pub fn build(b: *std.Build) void {
         else
             &[_][]const u8{ "-DTRACY_ENABLE=1", "-fno-sanitize=undefined" };
 
-        exe.addIncludePath(.{ .cwd_relative = tracy_path });
-        exe.addCSourceFile(.{ .file = .{ .cwd_relative = client_cpp }, .flags = tracy_c_flags });
+        exe.root_module.addIncludePath(.{ .cwd_relative = tracy_path });
+        exe.root_module.addCSourceFile(.{ .file = .{ .cwd_relative = client_cpp }, .flags = tracy_c_flags });
         exe.root_module.linkSystemLibrary("c++", .{ .use_pkg_config = .no });
 
         if (target.result.os.tag == .windows) {
-            exe.linkSystemLibrary("dbghelp");
-            exe.linkSystemLibrary("ws2_32");
+            exe.root_module.linkSystemLibrary("dbghelp", .{ .use_pkg_config = .no });
+            exe.root_module.linkSystemLibrary("ws2_32", .{ .use_pkg_config = .no });
         }
     }
     b.installArtifact(exe);
 
+    // Tests can only be run on macOS host, disable them otherwise.
+    if (builtin.target.os.tag != .macos) {
+        log.warn("Tests are only supported on macOS host, skipping", .{});
+        return;
+    }
     const has_zig = b.option(bool, "has-zig", "Whether the Zig compiler is in path") orelse false;
     const has_objc_msgsend_stubs = b.option(bool, "has-objc-msgsend-stubs", "Whether the system compiler supports '-fobjc-msgsend-selector-stubs' flag") orelse false;
     const is_nix = b.option(bool, "nix", "Whether the host is Nix-based") orelse false;

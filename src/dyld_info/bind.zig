@@ -39,7 +39,7 @@ pub const Bind = struct {
         const cpu_arch = macho_file.options.cpu_arch.?;
 
         var objects = try std.ArrayList(File.Index).initCapacity(gpa, macho_file.objects.items.len + 1);
-        defer objects.deinit();
+        defer objects.deinit(gpa);
         objects.appendSliceAssumeCapacity(macho_file.objects.items);
         if (macho_file.getInternalObject()) |obj| objects.appendAssumeCapacity(obj.index);
 
@@ -293,7 +293,7 @@ pub const WeakBind = struct {
         const cpu_arch = macho_file.options.cpu_arch.?;
 
         var objects = try std.ArrayList(File.Index).initCapacity(gpa, macho_file.objects.items.len + 1);
-        defer objects.deinit();
+        defer objects.deinit(gpa);
         objects.appendSliceAssumeCapacity(macho_file.objects.items);
         if (macho_file.getInternalObject()) |obj| objects.appendAssumeCapacity(obj.index);
 
@@ -561,11 +561,12 @@ pub const LazyBind = struct {
     }
 
     fn finalize(self: *Self, gpa: Allocator, ctx: *MachO) !void {
+        const utils = @import("../utils.zig");
         if (self.entries.items.len == 0) return;
 
         try self.offsets.ensureTotalCapacityPrecise(gpa, self.entries.items.len);
 
-        var cwriter = std.io.countingWriter(self.buffer.writer(gpa));
+        var cwriter = utils.countingWriter(self.buffer.writer(gpa));
         const writer = cwriter.writer();
 
         var addend: i64 = 0;

@@ -399,8 +399,8 @@ pub fn resolveLiterals(self: *InternalObject, lp: *MachO.LiteralPool, macho_file
 
     const gpa = macho_file.allocator;
 
-    var buffer = std.ArrayList(u8).init(gpa);
-    defer buffer.deinit();
+    var buffer = std.ArrayList(u8).empty;
+    defer buffer.deinit(gpa);
 
     const slice = self.sections.slice();
     for (slice.items(.header), self.getAtoms()) |header, atom_index| {
@@ -411,8 +411,8 @@ pub fn resolveLiterals(self: *InternalObject, lp: *MachO.LiteralPool, macho_file
         const rel = relocs[0];
         assert(rel.tag == .@"extern");
         const target = rel.getTargetSymbol(atom.*, macho_file).getAtom(macho_file).?;
-        try buffer.ensureUnusedCapacity(target.size);
-        buffer.resize(target.size) catch unreachable;
+        try buffer.ensureUnusedCapacity(gpa, target.size);
+        buffer.resize(gpa, target.size) catch unreachable;
         @memcpy(buffer.items, self.getSectionData(target.n_sect));
         const res = try lp.insert(gpa, header.type(), buffer.items);
         buffer.clearRetainingCapacity();

@@ -29,6 +29,8 @@
 //! this node has leaving it, followed by each edge. Each edge is a zero terminated UTF8 of
 //! the addition chars in the symbol, followed by a uleb128 offset for the node that edge points to.
 
+const utils = @import("../utils.zig");
+
 /// The root node of the trie.
 root: ?Node.Index = null,
 buffer: std.ArrayListUnmanaged(u8) = .empty,
@@ -134,20 +136,20 @@ fn finalize(self: *Trie, allocator: Allocator) !void {
     const tracy = trace(@src());
     defer tracy.end();
 
-    var ordered_nodes = std.ArrayList(Node.Index).init(allocator);
-    defer ordered_nodes.deinit();
-    try ordered_nodes.ensureTotalCapacityPrecise(self.nodes.items(.is_terminal).len);
+    var ordered_nodes = std.ArrayList(Node.Index).empty;
+    defer ordered_nodes.deinit(allocator);
+    try ordered_nodes.ensureTotalCapacityPrecise(allocator, self.nodes.items(.is_terminal).len);
 
-    var fifo = std.fifo.LinearFifo(Node.Index, .Dynamic).init(allocator);
-    defer fifo.deinit();
+    var deque = utils.VecDeque(Node.Index).empty;
+    defer deque.deinit(allocator);
 
-    try fifo.writeItem(self.root.?);
+    try deque.writeItem(allocator, self.root.?);
 
-    while (fifo.readItem()) |next_index| {
+    while (deque.readItem()) |next_index| {
         const edges = &self.nodes.items(.edges)[next_index];
         for (edges.items) |edge_index| {
             const edge = self.edges.items[edge_index];
-            try fifo.writeItem(edge.node);
+            try deque.writeItem(allocator, edge.node);
         }
         ordered_nodes.appendAssumeCapacity(next_index);
     }
@@ -181,7 +183,7 @@ const FinalizeNodeResult = struct {
 
 /// Updates offset of this node in the output byte stream.
 fn finalizeNode(self: *Trie, node_index: Node.Index, offset_in_trie: u32) !FinalizeNodeResult {
-    var stream = std.io.countingWriter(std.io.null_writer);
+    var stream = utils.countingWriter(std.io.null_writer);
     const writer = stream.writer();
     const slice = self.nodes.slice();
 

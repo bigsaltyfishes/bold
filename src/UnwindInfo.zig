@@ -277,11 +277,12 @@ pub fn calcSize(info: UnwindInfo) usize {
 }
 
 pub fn write(info: UnwindInfo, macho_file: *MachO, buffer: []u8) !void {
+    const utils = @import("./utils.zig");
     const seg = macho_file.getTextSegment();
     const header = macho_file.sections.items(.header)[macho_file.unwind_info_sect_index.?];
 
     var stream = std.io.fixedBufferStream(buffer);
-    var cwriter = std.io.countingWriter(stream.writer());
+    var cwriter = utils.countingWriter(stream.writer());
     const writer = cwriter.writer();
 
     const common_encodings_offset: u32 = @sizeOf(macho.unwind_info_section_header);

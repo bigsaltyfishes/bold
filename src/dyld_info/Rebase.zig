@@ -30,7 +30,7 @@ pub fn updateSize(rebase: *Rebase, macho_file: *MachO) !void {
     const gpa = macho_file.allocator;
 
     var objects = try std.ArrayList(File.Index).initCapacity(gpa, macho_file.objects.items.len + 1);
-    defer objects.deinit();
+    defer objects.deinit(gpa);
     objects.appendSliceAssumeCapacity(macho_file.objects.items);
     if (macho_file.getInternalObject()) |obj| objects.appendAssumeCapacity(obj.index);
 

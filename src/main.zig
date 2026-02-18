@@ -15,7 +15,7 @@ const gpa = if (tracy.enable_allocation)
 else
     std.heap.c_allocator;
 
-var log_scopes: std.ArrayList([]const u8) = std.ArrayList([]const u8).init(gpa);
+var log_scopes: std.ArrayList([]const u8) = std.ArrayList([]const u8).empty;
 
 fn logFn(
     comptime level: std.log.Level,

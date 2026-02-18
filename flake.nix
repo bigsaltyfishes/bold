@@ -4,15 +4,6 @@
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
     flake-utils.url = "github:numtide/flake-utils";
-    zig.url = "github:mitchellh/zig-overlay";
-    zls.url = "github:zigtools/zls";
-    zacho.url = "git+https://codeberg.org/kubkon/zacho";
-
-    # Used for shell.nix
-    flake-compat = {
-      url = "github:edolstra/flake-compat";
-      flake = false;
-    };
   };
 
   outputs =
@@ -22,26 +13,13 @@
       flake-utils,
       ...
     }@inputs:
-    let
-      overlays = [
-        # Other overlays
-        (final: prev: {
-          zigpkgs = inputs.zig.packages.${prev.system};
-          zlspkgs = inputs.zls.packages.${prev.system};
-          zachopkgs = inputs.zacho.packages.${prev.system};
-        })
-      ];
-
-      # Our supported systems are the same supported systems as the Zig binaries
-      systems = builtins.attrNames inputs.zig.packages;
-    in
-    flake-utils.lib.eachSystem systems (
+    flake-utils.lib.eachDefaultSystem (
       system:
       let
-        pkgs = import nixpkgs { inherit overlays system; };
+        pkgs = import nixpkgs { inherit system; };
       in
       rec {
-        commonInputs = with pkgs; [ zigpkgs.master ];
+        commonInputs = with pkgs; [ zig_0_15 ];
 
         tracy-version = "0.10";
         tracy-src = pkgs.fetchFromGitHub {
@@ -57,27 +35,29 @@
           version = "master";
           src = ./.;
           nativeBuildInputs = commonInputs;
-          buildInputs = commonInputs;
           dontConfigure = true;
           dontInstall = true;
-          doCheck = true;
-          buildPhase = ''
+          doCheck = false;
+          postPatch = ''
             mkdir -p .cache
-            zig build install -Doptimize=ReleaseFast --prefix $out --cache-dir $(pwd)/.zig-cache --global-cache-dir $(pwd)/.cache 
+            ln -s ${pkgs.callPackage ./build.zig.zon.nix { }} $(pwd)/.cache/p
           '';
-          # TODO why -Dhas-zig doesn't work?
-          checkPhase = ''
-            zig build test -Dnix --cache-dir $(pwd)/.zig-cache --global-cache-dir $(pwd)/.cache
+          buildPhase = ''
+            zig build install -Doptimize=ReleaseFast --prefix $out --cache-dir $(pwd)/.zig-cache --global-cache-dir $(pwd)/.cache
           '';
         };
 
         devShells.default = pkgs.mkShell {
+          shellHook = ''
+            export ZIG_GLOBAL_CACHE_DIR=$HOME/.cache/zig
+          '';
           buildInputs =
             commonInputs
             ++ (with pkgs; [
-              zlspkgs.default
+              zls_0_15
+              zig_0_15
+              zon2nix
               tracy
-              zachopkgs.default
               hyperfine
             ]);
 

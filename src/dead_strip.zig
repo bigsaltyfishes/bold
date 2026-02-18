@@ -2,12 +2,12 @@ pub fn gcAtoms(macho_file: *MachO) !void {
     const gpa = macho_file.allocator;
 
     var objects = try std.ArrayList(File.Index).initCapacity(gpa, macho_file.objects.items.len + 1);
-    defer objects.deinit();
+    defer objects.deinit(gpa);
     for (macho_file.objects.items) |index| objects.appendAssumeCapacity(index);
     if (macho_file.internal_object_index) |index| objects.appendAssumeCapacity(index);
 
-    var roots = std.ArrayList(*Atom).init(gpa);
-    defer roots.deinit();
+    var roots = std.ArrayList(*Atom).empty;
+    defer roots.deinit(gpa);
 
     try collectRoots(&roots, objects.items, macho_file);
     mark(roots.items, objects.items, macho_file);
@@ -15,6 +15,7 @@ pub fn gcAtoms(macho_file: *MachO) !void {
 }
 
 fn collectRoots(roots: *std.ArrayList(*Atom), objects: []const File.Index, macho_file: *MachO) !void {
+    const gpa = macho_file.allocator;
     for (objects) |index| {
         const object = macho_file.getFile(index);
         for (object.getSymbols(), 0..) |*sym, i| {
@@ -31,10 +32,10 @@ fn collectRoots(roots: *std.ArrayList(*Atom), objects: []const File.Index, macho
             switch (isec.type()) {
                 macho.S_MOD_INIT_FUNC_POINTERS,
                 macho.S_MOD_TERM_FUNC_POINTERS,
-                => if (markAtom(atom)) try roots.append(atom),
+                => if (markAtom(atom)) try roots.append(gpa, atom),
 
                 else => if (isec.isDontDeadStrip() and markAtom(atom)) {
-                    try roots.append(atom);
+                    try roots.append(gpa, atom);
                 },
             }
         }
@@ -74,7 +75,7 @@ fn collectRoots(roots: *std.ArrayList(*Atom), objects: []const File.Index, macho
 
 fn markSymbol(sym: *Symbol, roots: *std.ArrayList(*Atom), macho_file: *MachO) !void {
     const atom = sym.getAtom(macho_file) orelse return;
-    if (markAtom(atom)) try roots.append(atom);
+    if (markAtom(atom)) try roots.append(macho_file.allocator, atom);
 }
 
 fn markAtom(atom: *Atom) bool {

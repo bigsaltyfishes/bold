@@ -1,0 +1,4 @@
+{
+    "zig.zls.globalCachePath": "${workspaceFolder}/.cache",
+    "zig.buildOnSaveProvider": "zls",
+}

@@ -23,7 +23,7 @@ const usage =
     \\                                   messages with the architecture name.
     \\-current_version [value]           Specifies the current version number of the library
     \\-compatibility_version [value]     Specifies the compatibility version number of the library
-    \\-dead_strip                        Remove functions and data that are unreachable by the entry point or 
+    \\-dead_strip                        Remove functions and data that are unreachable by the entry point or
     \\                                   exported symbols
     \\-dead_strip_dylibs                 Remove dylibs that were unreachable by the entry point or exported symbols
     \\--debug-log [scope]                Turn on debugging logs for [scope] (requires linker compiled with -Dlog)
@@ -55,7 +55,7 @@ const usage =
     \\-macos_version_min [version]       Set oldest macOS version that the output can be used on.
     \\-needed_framework [name]           Link against framework (even if unused)
     \\-needed-l[name]                    Link against library (even if unused)
-    \\  -needed_library [name]           
+    \\  -needed_library [name]
     \\-no_deduplicate                    Do not run deduplication pass in linker
     \\-no_fixup_chains                   Do not emit fixup chains
     \\-no_implicit_dylibs                Do not hoist public dylibs/frameworks into the final image.
@@ -66,7 +66,7 @@ const usage =
     \\                                   This option is currently unused.
     \\-pagezero_size [value]             Size of the __PAGEZERO segment in hexademical notation
     \\-platform_version [platform] [min_version] [sdk_version]
-    \\                                   Sets the platform, oldest supported version of that platform and 
+    \\                                   Sets the platform, oldest supported version of that platform and
     \\                                   the SDK it was built against
     \\-r                                 Create a relocatable object file
     \\-reexport-l[name]                  Link against library and re-export it for the clients
@@ -79,7 +79,7 @@ const usage =
     \\-syslibroot [path]                 Specify the syslibroot
     \\-two_levelnamespace                Use two-level namespace dylib resolution strategy (default)
     \\-u [name]                          Specifies symbol which has to be resolved at link time for the link to succeed
-    \\-undefined [value]                 Specify how undefined symbols are to be treated: 
+    \\-undefined [value]                 Specify how undefined symbols are to be treated:
     \\                                   error (default), warning, suppress, or dynamic_lookup.
     \\-v                                 Print version
     \\--verbose                          Print full linker invocation to stderr
@@ -139,7 +139,7 @@ final_output: ?[]const u8 = null,
 pub fn parse(arena: Allocator, args: []const []const u8, ctx: anytype) !Options {
     if (args.len == 0) ctx.fatal(usage ++ "\n", .{});
 
-    var positionals = std.ArrayList(MachO.LinkObject).init(arena);
+    var positionals = std.ArrayList(MachO.LinkObject).empty;
     var lib_dirs = std.StringArrayHashMap(void).init(arena);
     var framework_dirs = std.StringArrayHashMap(void).init(arena);
     var rpath_list = std.StringArrayHashMap(void).init(arena);
@@ -157,7 +157,7 @@ pub fn parse(arena: Allocator, args: []const []const u8, ctx: anytype) !Options 
         .framework_dirs = undefined,
         .rpath_list = undefined,
     };
-    var unknown_options = std.ArrayList(u8).init(arena);
+    var unknown_options = std.ArrayList(u8).empty;
 
     var it = ArgsIterator{ .args = args };
     var p = ArgParser(@TypeOf(ctx)){ .it = &it, .ctx = ctx };
@@ -165,7 +165,7 @@ pub fn parse(arena: Allocator, args: []const []const u8, ctx: anytype) !Options 
         if (p.flag2("help")) {
             ctx.fatal(usage ++ "\n", .{});
         } else if (p.arg2("debug-log")) |scope| {
-            try ctx.log_scopes.append(scope);
+            try ctx.log_scopes.append(arena, scope);
         } else if (p.arg2("entitlements")) |path| {
             opts.entitlements = path;
         } else if (p.flag1("v")) {
@@ -179,27 +179,27 @@ pub fn parse(arena: Allocator, args: []const []const u8, ctx: anytype) !Options 
         } else if (p.flag1("search_dylibs_first")) {
             opts.search_strategy = .dylibs_first;
         } else if (p.arg1("framework")) |path| {
-            try positionals.append(.{ .path = path, .tag = .framework });
+            try positionals.append(arena, .{ .path = path, .tag = .framework });
         } else if (p.arg1("F")) |path| {
             try framework_dirs.put(path, {});
         } else if (p.arg1("hidden-l")) |path| {
-            try positionals.append(.{ .path = path, .tag = .lib, .hidden = true });
+            try positionals.append(arena, .{ .path = path, .tag = .lib, .hidden = true });
         } else if (p.arg1("needed-l")) |path| {
-            try positionals.append(.{ .path = path, .tag = .lib, .needed = true });
+            try positionals.append(arena, .{ .path = path, .tag = .lib, .needed = true });
         } else if (p.arg1("needed_library")) |path| {
-            try positionals.append(.{ .path = path, .tag = .lib, .needed = true });
+            try positionals.append(arena, .{ .path = path, .tag = .lib, .needed = true });
         } else if (p.arg1("needed_framework")) |path| {
-            try positionals.append(.{ .path = path, .tag = .framework, .needed = true });
+            try positionals.append(arena, .{ .path = path, .tag = .framework, .needed = true });
         } else if (p.arg1("reexport-l")) |path| {
-            try positionals.append(.{ .path = path, .tag = .lib, .reexport = true });
+            try positionals.append(arena, .{ .path = path, .tag = .lib, .reexport = true });
         } else if (p.arg1("reexport_library")) |path| {
-            try positionals.append(.{ .path = path, .tag = .lib, .reexport = true });
+            try positionals.append(arena, .{ .path = path, .tag = .lib, .reexport = true });
         } else if (p.arg1("weak-l")) |path| {
-            try positionals.append(.{ .path = path, .tag = .lib, .weak = true });
+            try positionals.append(arena, .{ .path = path, .tag = .lib, .weak = true });
         } else if (p.arg1("weak_library")) |path| {
-            try positionals.append(.{ .path = path, .tag = .lib, .weak = true });
+            try positionals.append(arena, .{ .path = path, .tag = .lib, .weak = true });
         } else if (p.arg1("weak_framework")) |path| {
-            try positionals.append(.{ .path = path, .tag = .framework, .weak = true });
+            try positionals.append(arena, .{ .path = path, .tag = .framework, .weak = true });
         } else if (p.arg1("o")) |path| {
             opts.emit.sub_path = path;
         } else if (p.arg1("stack_size")) |value| {
@@ -269,9 +269,9 @@ pub fn parse(arena: Allocator, args: []const []const u8, ctx: anytype) !Options 
         } else if (p.flag1("all_load")) {
             opts.all_load = true;
         } else if (p.arg1("force_load")) |path| {
-            try positionals.append(.{ .path = path, .tag = .obj, .must_link = true });
+            try positionals.append(arena, .{ .path = path, .tag = .obj, .must_link = true });
         } else if (p.arg1("load_hidden")) |path| {
-            try positionals.append(.{ .path = path, .tag = .obj, .hidden = true });
+            try positionals.append(arena, .{ .path = path, .tag = .obj, .hidden = true });
         } else if (p.arg1("arch")) |value| {
             if (mem.eql(u8, value, "arm64")) {
                 opts.cpu_arch = .aarch64;
@@ -332,7 +332,7 @@ pub fn parse(arena: Allocator, args: []const []const u8, ctx: anytype) !Options 
         } else if (p.flag1("demangle")) {
             std.log.debug("TODO unimplemented -demangle option", .{});
         } else if (p.arg1("l")) |path| {
-            try positionals.append(.{ .path = path, .tag = .lib });
+            try positionals.append(arena, .{ .path = path, .tag = .lib });
         } else if (p.arg1("L")) |path| {
             try lib_dirs.put(path, {});
         } else if (p.flag1("no_deduplicate")) {
@@ -372,10 +372,10 @@ pub fn parse(arena: Allocator, args: []const []const u8, ctx: anytype) !Options 
         } else if (p.arg1("final_output")) |name| {
             opts.final_output = name;
         } else if (mem.startsWith(u8, p.arg, "-")) {
-            try unknown_options.appendSlice(p.arg);
-            try unknown_options.append('\n');
+            try unknown_options.appendSlice(arena, p.arg);
+            try unknown_options.append(arena, '\n');
         } else {
-            try positionals.append(.{ .path = p.arg, .tag = .obj });
+            try positionals.append(arena, .{ .path = p.arg, .tag = .obj });
         }
     }
 
@@ -460,7 +460,7 @@ fn parseFileList(arena: Allocator, filename_with_dirname: []const u8, positional
             try std.fs.path.join(arena, &.{ dir, trimmed })
         else
             trimmed;
-        try positionals.append(.{ .path = full_path, .tag = .obj });
+        try positionals.append(arena, .{ .path = full_path, .tag = .obj });
     }
 }
 

@@ -101,8 +101,8 @@ pub fn parse(self: *Object, macho_file: *MachO) !void {
         if (amt != self.header.?.sizeofcmds) return error.InputOutput;
     }
 
-    var platforms = std.ArrayList(MachO.Options.Platform).init(gpa);
-    defer platforms.deinit();
+    var platforms = std.ArrayList(MachO.Options.Platform).empty;
+    defer platforms.deinit(gpa);
 
     var it = LoadCommandIterator{
         .ncmds = self.header.?.ncmds,
@@ -164,7 +164,7 @@ pub fn parse(self: *Object, macho_file: *MachO) !void {
         .VERSION_MIN_IPHONEOS,
         .VERSION_MIN_TVOS,
         .VERSION_MIN_WATCHOS,
-        => try platforms.append(MachO.Options.Platform.fromLoadCommand(lc)),
+        => try platforms.append(gpa, MachO.Options.Platform.fromLoadCommand(lc)),
         else => {},
     };
 
@@ -223,7 +223,7 @@ pub fn parse(self: *Object, macho_file: *MachO) !void {
     };
 
     var nlists = try std.ArrayList(NlistIdx).initCapacity(gpa, self.symtab.items(.nlist).len);
-    defer nlists.deinit();
+    defer nlists.deinit(gpa);
     for (self.symtab.items(.nlist), 0..) |nlist, i| {
         if (nlist.stab() or !nlist.sect()) continue;
         nlists.appendAssumeCapacity(.{ .nlist = nlist, .idx = i });
@@ -633,8 +633,8 @@ pub fn resolveLiterals(self: *Object, lp: *MachO.LiteralPool, macho_file: *MachO
     const gpa = macho_file.allocator;
     const file = macho_file.getFileHandle(self.file_handle);
 
-    var buffer = std.ArrayList(u8).init(gpa);
-    defer buffer.deinit();
+    var buffer = std.ArrayList(u8).empty;
+    defer buffer.deinit(gpa);
 
     var sections_data = std.AutoHashMap(u32, []const u8).init(gpa);
     try sections_data.ensureTotalCapacity(@intCast(self.sections.items(.header).len));
@@ -678,8 +678,8 @@ pub fn resolveLiterals(self: *Object, lp: *MachO.LiteralPool, macho_file: *MachO
                     .@"extern" => rel.getTargetSymbol(atom.*, macho_file).getAtom(macho_file).?,
                 };
                 const addend = math.cast(u32, rel.addend) orelse return error.Overflow;
-                try buffer.ensureUnusedCapacity(target.size);
-                buffer.resize(target.size) catch unreachable;
+                try buffer.ensureUnusedCapacity(gpa, target.size);
+                buffer.resize(gpa, target.size) catch unreachable;
                 const gop = try sections_data.getOrPut(target.n_sect);
                 if (!gop.found_existing) {
                     gop.value_ptr.* = try self.readSectionData(gpa, file, @intCast(target.n_sect));

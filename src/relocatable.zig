@@ -463,13 +463,14 @@ fn writeEhFrameWorker(macho_file: *MachO) void {
 }
 
 fn writeLoadCommands(macho_file: *MachO) !struct { usize, usize } {
+    const utils = @import("./utils.zig");
     const gpa = macho_file.allocator;
     const needed_size = load_commands.calcLoadCommandsSizeObject(macho_file);
     const buffer = try gpa.alloc(u8, needed_size);
     defer gpa.free(buffer);
 
     var stream = std.io.fixedBufferStream(buffer);
-    var cwriter = std.io.countingWriter(stream.writer());
+    var cwriter = utils.countingWriter(stream.writer());
     const writer = cwriter.writer();
 
     var ncmds: usize = 0;

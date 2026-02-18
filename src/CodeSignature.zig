@@ -272,8 +272,8 @@ pub fn writeAdhocSignature(
         .count = 0,
     };
 
-    var blobs = std.ArrayList(Blob).init(allocator);
-    defer blobs.deinit();
+    var blobs = std.ArrayList(Blob).empty;
+    defer blobs.deinit(allocator);
 
     self.code_directory.inner.execSegBase = opts.exec_seg_base;
     self.code_directory.inner.execSegLimit = opts.exec_seg_limit;
@@ -293,38 +293,38 @@ pub fn writeAdhocSignature(
         .max_file_size = opts.file_size,
     });
 
-    try blobs.append(.{ .code_directory = &self.code_directory });
+    try blobs.append(allocator, .{ .code_directory = &self.code_directory });
     header.length += @sizeOf(macho.BlobIndex);
     header.count += 1;
 
     var hash: [hash_size]u8 = undefined;
 
     if (self.requirements) |*req| {
-        var buf = std.ArrayList(u8).init(allocator);
-        defer buf.deinit();
-        try req.write(buf.writer());
+        var buf = std.ArrayList(u8).empty;
+        defer buf.deinit(allocator);
+        try req.write(buf.writer(allocator));
         Sha256.hash(buf.items, &hash, .{});
         self.code_directory.addSpecialHash(req.slotType(), hash);
 
-        try blobs.append(.{ .requirements = req });
+        try blobs.append(allocator, .{ .requirements = req });
         header.count += 1;
         header.length += @sizeOf(macho.BlobIndex) + req.size();
     }
 
     if (self.entitlements) |*ents| {
-        var buf = std.ArrayList(u8).init(allocator);
-        defer buf.deinit();
-        try ents.write(buf.writer());
+        var buf = std.ArrayList(u8).empty;
+        defer buf.deinit(allocator);
+        try ents.write(buf.writer(allocator));
         Sha256.hash(buf.items, &hash, .{});
         self.code_directory.addSpecialHash(ents.slotType(), hash);
 
-        try blobs.append(.{ .entitlements = ents });
+        try blobs.append(allocator, .{ .entitlements = ents });
         header.count += 1;
         header.length += @sizeOf(macho.BlobIndex) + ents.size();
     }
 
     if (self.signature) |*sig| {
-        try blobs.append(.{ .signature = sig });
+        try blobs.append(allocator, .{ .signature = sig });
         header.count += 1;
         header.length += @sizeOf(macho.BlobIndex) + sig.size();
     }

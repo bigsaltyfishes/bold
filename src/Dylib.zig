@@ -92,8 +92,8 @@ fn parseBinary(self: *Dylib, macho_file: *MachO) !void {
         if (amt != lc_buffer.len) return error.InputOutput;
     }
 
-    var platforms = std.ArrayList(MachO.Options.Platform).init(gpa);
-    defer platforms.deinit();
+    var platforms = std.ArrayList(MachO.Options.Platform).empty;
+    defer platforms.deinit(gpa);
 
     var it = LoadCommandIterator{
         .ncmds = header.ncmds,
@@ -132,7 +132,7 @@ fn parseBinary(self: *Dylib, macho_file: *MachO) !void {
         .VERSION_MIN_IPHONEOS,
         .VERSION_MIN_TVOS,
         .VERSION_MIN_WATCHOS,
-        => try platforms.append(MachO.Options.Platform.fromLoadCommand(lc)),
+        => try platforms.append(gpa, MachO.Options.Platform.fromLoadCommand(lc)),
         else => {},
     };
 
@@ -500,16 +500,16 @@ fn parseTbdV3(self: *Dylib, stubs: []const TbdV3, macho_file: *MachO) !void {
     defer matcher.deinit();
 
     for (stubs, 0..) |stub, stub_index| {
-        var targets = std.ArrayList([]const u8).init(gpa);
+        var targets = std.ArrayList([]const u8).empty;
         defer {
             for (targets.items) |target| {
                 gpa.free(target);
             }
-            targets.deinit();
+            targets.deinit(gpa);
         }
         for (stub.archs) |arch| {
             const target = try std.fmt.allocPrint(gpa, "{s}-{s}", .{ arch, stub.platform });
-            try targets.append(target);
+            try targets.append(gpa, target);
         }
         if (!matcher.matchesTarget(targets.items)) continue;
 
@@ -845,10 +845,10 @@ pub const TargetMatcher = struct {
                 const host_target = try targetToAppleString(allocator, cpu_arch, .MACOS);
                 defer allocator.free(host_target);
                 var host_target_aug = try std.ArrayList(u8).initCapacity(allocator, host_target.len + 1);
-                defer host_target_aug.deinit();
+                defer host_target_aug.deinit(allocator);
                 host_target_aug.appendSliceAssumeCapacity(host_target);
                 host_target_aug.appendAssumeCapacity('x');
-                try self.target_strings.append(allocator, try host_target_aug.toOwnedSlice());
+                try self.target_strings.append(allocator, try host_target_aug.toOwnedSlice(allocator));
             },
             else => {},
         }

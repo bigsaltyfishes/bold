@@ -295,13 +295,14 @@ pub const Iterator = struct {
 };
 
 pub fn calcSize(macho_file: *MachO) !u32 {
+    const gpa = macho_file.allocator;
     const tracy = trace(@src());
     defer tracy.end();
 
     var offset: u32 = 0;
 
-    var cies = std.ArrayList(Cie).init(macho_file.allocator);
-    defer cies.deinit();
+    var cies = std.ArrayList(Cie).empty;
+    defer cies.deinit(gpa);
 
     for (macho_file.objects.items) |index| {
         const object = macho_file.getFile(index).object;
@@ -320,7 +321,7 @@ pub fn calcSize(macho_file: *MachO) !u32 {
             cie.alive = true;
             cie.out_offset = offset;
             offset += cie.getSize();
-            try cies.append(cie.*);
+            try cies.append(gpa, cie.*);
         }
     }
 
