@@ -2579,13 +2579,15 @@ fn writeLoadCommands(self: *MachO) !struct { usize, usize, usize } {
     try writer.writeStruct(macho.source_version_command{ .version = 0 });
     ncmds += 1;
 
-    if (self.options.platform) |platform| {
-        if (platform.isBuildVersionCompatible()) {
-            try load_commands.writeBuildVersionLC(platform, self.options.sdk_version, writer);
-            ncmds += 1;
-        } else {
-            try load_commands.writeVersionMinLC(platform, self.options.sdk_version, writer);
-            ncmds += 1;
+    if (!self.options.freestanding) {
+        if (self.options.platform) |platform| {
+            if (platform.isBuildVersionCompatible()) {
+                try load_commands.writeBuildVersionLC(platform, self.options.sdk_version, writer);
+                ncmds += 1;
+            } else {
+                try load_commands.writeVersionMinLC(platform, self.options.sdk_version, writer);
+                ncmds += 1;
+            }
         }
     }
 

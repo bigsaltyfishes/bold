@@ -103,6 +103,7 @@ dynamic: bool = false,
 cpu_arch: ?std.Target.Cpu.Arch = null,
 arch_multiple: bool = false,
 platform: ?Platform = null,
+freestanding: bool = false,
 sdk_version: ?Version = null,
 inferred_platform_versions: [supported_platforms.len]Platform = undefined,
 positionals: []const MachO.LinkObject,
@@ -211,6 +212,8 @@ pub fn parse(arena: Allocator, args: []const []const u8, ctx: anytype) !Options 
             opts.dynamic = true;
         } else if (p.flag1("static")) {
             opts.dynamic = false;
+        } else if (p.flag1("freestanding")) {
+            opts.freestanding = true;
         } else if (p.arg1("rpath")) |path| {
             try rpath_list.put(path, {});
         } else if (p.arg1("compatibility_version")) |raw| {
