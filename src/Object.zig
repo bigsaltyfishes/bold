@@ -183,7 +183,7 @@ pub fn parse(self: *Object, macho_file: *MachO) !void {
                     },
                 );
             }
-        } else {
+        } else if (platforms.items.len != 0) {
             const err = try macho_file.addErrorWithNotes(1 + platforms.items.len);
             defer err.unlock();
             try err.addMsg("{f}: object file was built for different platforms than required {s}", .{
